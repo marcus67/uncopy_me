@@ -33,6 +33,7 @@ class Picture(Base):
     md5 = Column(String(256))
 
 
+
 class Persistence(object):
 
     def __init__(self, p_url):
@@ -43,6 +44,19 @@ class Persistence(object):
     def create_database(self):
 
         Base.metadata.create_all(self._engine)
+
+        # See https://stackoverflow.com/questions/55921584/create-an-ordered-index-in-sqlite-db-using-sqlalchemy
+        try:
+            sqlalchemy.Index('picture_index_filename', Picture.filename.asc()).create(self._engine)
+
+        except sqlalchemy.exc.OperationalError:
+            pass
+
+        try:
+            sqlalchemy.Index('picture_index_hash', Picture.hash.asc()).create(self._engine)
+
+        except sqlalchemy.exc.OperationalError:
+            pass
 
     def get_session(self):
 

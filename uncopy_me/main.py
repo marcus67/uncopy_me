@@ -17,74 +17,17 @@
 
 import argparse
 import logging
-import os.path
 
-from uncopy_me import persistence
-from uncopy_me import filetool
+from uncopy_me import uncopy_handler
+from uncopy_me import yaml_config
 
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_USER_CONFIG_FILENAME = ".config/uncopy_me/uncopy_me.yaml"
 LOGGING_NAME = "uncopy_me"
-
-DB_FILENAME = "uncopy-sqlite3.db"
 
 logger = None
 
-
-class UncopyMe(object):
-
-    def __init__(self, p_logger, p_args):
-
-        self._logger = p_logger
-        self._args = p_args
-        self._p = None
-
-        
-    def scan_directories(self):
-
-        full_file_list = []
-
-        f_tool = filetool.FileTool(p_logger=logger)
-
-        for directory in self._args.scan_directories:
-            file_list = f_tool.scan_directory(p_directory=directory, p_recursive=self._args.scan_recursively)
-            full_file_list.extend(file_list)
-
-        session = self._p.get_session()
-
-        for filename in full_file_list:
-            result = session.query(persistence.Picture).filter_by(filename=filename).first()
-
-            if result is None:
-
-                fmt = "Adding new picture {filename} to cache..."
-                self._logger.debug(fmt.format(filename=filename))
-
-                new_picture = persistence.Picture()
-                new_picture.filename = filename
-                session.add(new_picture)
-
-        session.commit()
-
-
-    def run(self):
-
-        result = 0
-
-        cache_directory = os.path.expanduser(self._args.cache_directory)
-
-        if not os.path.exists(cache_directory):
-            os.mkdir(cache_directory)
-
-        db_filename = os.path.join(cache_directory, DB_FILENAME)
-        url = 'sqlite:///{filename}'.format(filename=db_filename)
-
-        self._p = persistence.Persistence(p_url=url)
-        self._p.create_database()
-        
-        if len(self._args.scan_directories) > 0:
-            self.scan_directories()
-
-        return result
+DEFAULT_COMMIT_BLOCK_SIZE = 1000
 
 def get_argument_parser():
     parser = argparse.ArgumentParser()
@@ -92,11 +35,25 @@ def get_argument_parser():
                         help='directories to be parsed')
     parser.add_argument('--cache-directory', dest='cache_directory', default="~/.cache/uncopy_me",
                         help='directory to be used for cache files')
+    parser.add_argument('--config-file', dest='config_file',
+                        help='configuration file')
+    parser.add_argument('--commit-block-size', dest='commit_block_size', default=DEFAULT_COMMIT_BLOCK_SIZE,
+                        help='number of cache operations between commits')
     parser.add_argument('--scan-recursively', dest='scan_recursively', default=True,
                         help='scan recursively into directories')
+    parser.add_argument('--find-duplicates', dest='find_duplicates', action="store_true",
+                        help='find duplicates in cache')
+    parser.add_argument('--exclude-patterns', nargs='*', dest='exclude_patterns', default = [],
+                        help='set exclude pattern for scanned picture names')
     parser.add_argument('--loglevel', dest='log_level', default=DEFAULT_LOG_LEVEL,
                         help='logging level', choices=['WARN', 'INFO', 'DEBUG'])
-
+    parser.add_argument('--delete', dest='delete', action="store_true",
+                        help='actually delete pictures regarded as duplicates (otherwise duplicates are only listed)')
+    parser.add_argument('--similar', dest='similar', action="store_true",
+                        help='use similarity hash for find duplicates '
+                             '(otherwise only identical pictures are regarded as duplicates)')
+    parser.add_argument('--use-priorities', dest='use_priorities', action="store_true",
+                        help='use priority declarations to determine which duplicates are deleted')
     return parser
 
 def start_loggging(p_loglevel):
@@ -137,9 +94,31 @@ def main():
 
     start_loggging(p_loglevel=arguments.log_level)
 
-    uncopy_me = UncopyMe(p_logger=logger, p_args=arguments)
+    try:
+        config = yaml_config.YamlConfig(p_logger=logger)
 
-    result = uncopy_me.run()
+        yaml_config.read_user_config_file(p_config=config,
+                                          p_user_filename=DEFAULT_USER_CONFIG_FILENAME,
+                                          p_filename=arguments.config_file)
+
+        handler = uncopy_handler.UncopyHandler(p_logger=logger, p_args=arguments, p_config=config)
+        result = handler.run()
+
+    except yaml_config.ConfigurationException as e:
+        fmt = "Error in configuration: {msg}"
+        logger.error(fmt.format(msg=str(e)))
+        result = 2
+
+    except (NameError, IndexError, TypeError) as e:
+        fmt = "Exception: {msg}"
+        logger.exception(fmt.format(msg=str(e)))
+        result = 3
+
+
+    except Exception as e:
+        fmt = "General exception of type {type}: {msg}"
+        logger.error(fmt.format(type=type(e), msg=str(e)))
+        result = 3
 
     return result
 
