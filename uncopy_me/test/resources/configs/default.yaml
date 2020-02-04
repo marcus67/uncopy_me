@@ -1,0 +1,5 @@
+priorities:
+  - "uncopy_me/test/resources/pictures/high_priority"
+  - "uncopy_me/test/resources/pictures/medium_priority"
+  - "uncopy_me/test/resources/pictures/low_priority"
+  - "uncopy_me/test/resources/pictures/transitory"

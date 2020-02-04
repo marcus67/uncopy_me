@@ -19,6 +19,7 @@ import os.path
 
 import yaml
 
+
 class ConfigurationException(Exception):
     pass
 
@@ -40,9 +41,7 @@ def read_user_config_file(p_config, p_user_filename, p_filename=None, p_must_exi
             raise ConfigurationException(fmt.format(filename=filename))
 
 
-
 class YamlConfig(object):
-
 
     def __init__(self, p_logger):
 
@@ -67,7 +66,7 @@ class YamlConfig(object):
                 if p_default is None:
                     if p_raise_error:
                         fmt = "Cannot find configuration element '{element}' of path '{path}' in context '{context}'"
-                        raise ConfigurationException(fmt.format(element = element, context = p_context, path = p_path))
+                        raise ConfigurationException(fmt.format(element=element, context=p_context, path=p_path))
 
                     else:
                         return None
@@ -88,4 +87,3 @@ class YamlConfig(object):
                 return int_value
 
             return subtree
-

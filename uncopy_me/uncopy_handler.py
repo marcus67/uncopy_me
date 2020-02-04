@@ -40,8 +40,8 @@ RELEVANT_MIME_TYPES = [
 ]
 
 PriorityEntry = collections.namedtuple("PriorityEntry", "priority pattern compiled_pattern")
-
 ResolvedEntry = collections.namedtuple("ResolvedEntry", "keep discard")
+
 
 class UncopyHandler(object):
 
@@ -69,7 +69,7 @@ class UncopyHandler(object):
 
         try:
             self._priority_patterns = sorted([PriorityEntry(ind, priority,
-                                                            re.compile(self.replace_home_directory(priority)))
+                                                            re.compile(os.path.abspath(self.replace_home_directory(priority))))
                                               for ind, priority in enumerate(self._priorities)],
                                              key=lambda entry:-len(entry.pattern))
 
@@ -106,7 +106,9 @@ class UncopyHandler(object):
         self._logger.info(fmt.format(number=len(self._args.scan_directories)))
 
         for directory in self._args.scan_directories:
-            file_list = f_tool.scan_directory(p_directory=directory, p_recursive=self._args.scan_recursively)
+
+            effective_directory = os.path.abspath(directory)
+            file_list = f_tool.scan_directory(p_directory=effective_directory, p_recursive=self._args.scan_recursively)
             full_file_list.extend(file_list)
 
         session = self._p.get_session()
@@ -145,7 +147,6 @@ class UncopyHandler(object):
         fmt = "Images merged/newly added/with errors: {merged}/{added}/{errors}."
         self._logger.info(fmt.format(merged=images_merged, added=new_images, errors=errors))
         session.commit()
-
 
     def get_duplicate_hash_sets(self):
 
@@ -238,46 +239,88 @@ class UncopyHandler(object):
 
         return resolved_entries
 
-
-
-
     def find_duplicates(self):
 
         similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets()
 
-        fmt = "Found {identical_number} identical image(s) and "\
+        fmt = "\nFound {identical_number} identical image(s) and "\
               "additional {similar_number} similar image(s) in more than one location"
         self._logger.info(fmt.format(similar_number=len(similar_hash_sets),
                                      identical_number=len(identical_hash_sets)))
 
         for (md5, pics) in identical_hash_sets.items():
 
-            fmt = "Pictures with MD5 hash {hash} was found in {number} locations:"
+            fmt = "    Pictures with MD5 hash {hash} was found in {number} locations:"
             self._logger.info(fmt.format(hash=md5, number=len(pics)))
 
             for pic in pics:
-                fmt = "   location:{filename}"
+                fmt = "        location:{filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
 
         if self._args.similar:
             for (hash, pics) in similar_hash_sets.items():
 
-                fmt = "Additional pictures with similarity hash {hash} was found in {number} locations:"
+                fmt = "    Additional pictures with similarity hash {hash} was found in {number} locations:"
                 self._logger.info(fmt.format(hash=hash, number=len(pics)))
 
                 for pic in pics:
-                    fmt ="   location:{filename} md5={md5}"
+                    fmt ="        * {filename} md5={md5}"
                     self._logger.info(fmt.format(filename=pic.filename, md5=pic.md5))
 
     def list_resolved_entries(self, p_resolved_entries):
 
+        fmt = "\nList of resolved {number} entries:"
+        self._logger.info(fmt.format(number=len(p_resolved_entries)))
+
         for entry in p_resolved_entries:
-            fmt = "Picture {filename} will be kept with duplicates to be deleted in:"
-            self._logger.info(fmt.format(filename=entry.keep.filename))
+            fmt = "    Picture {filename} will be kept with {number} duplicate(s) to be deleted in:"
+            self._logger.info(fmt.format(filename=entry.keep.filename, number=len(entry.discard)))
 
             for pic in entry.discard:
-                fmt = "* {filename}"
+                fmt = "        * {filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
+
+    def delete_resolved_entries(self, p_resolved_entries):
+
+        fmt = "\nDeleting {number} resolved entries..."
+        self._logger.info(fmt.format(number=len(p_resolved_entries)))
+
+        session = self._p.get_session()
+
+        for entry in p_resolved_entries:
+            for pic in entry.discard:
+                fmt = "    * {filename}"
+                self._logger.debug(fmt.format(filename=pic.filename))
+
+                try:
+                    session.query(persistence.Picture).filter(persistence.Picture.filename==pic.filename).delete()
+                    os.unlink(pic.filename)
+
+
+                except IOError as e:
+                    fmt = 'IOError "{msg}" while deleting "{filename}"!'
+                    self._logger.error(fmt.format(msg=str(e), filename=pic.filename))
+
+        session.commit()
+
+    def check_cache(self):
+
+        session = self._p.get_session()
+        count = 0
+
+        for pic in session.query(persistence.Picture):
+            if not os.path.exists(pic.filename) or not os.path.isabs(pic.filename):
+
+                fmt = "Removing non-existing picture '{filename}' from cache..."
+                self._logger.debug(fmt.format(filename=pic.filename))
+
+                session.delete(pic)
+                count = count + 1
+
+        fmt = "Removed {count} entries from cache."
+        self._logger.info(fmt.format(count=count))
+
+        session.commit()
 
 
     def run(self):
@@ -294,12 +337,14 @@ class UncopyHandler(object):
         db_filename = os.path.join(cache_directory, DB_FILENAME)
         url = 'sqlite:///{filename}'.format(filename=db_filename)
 
-
         self._p = persistence.Persistence(p_url=url)
         self._p.create_database()
         
         if len(self._args.scan_directories) > 0:
             self.scan_directories()
+
+        if self._args.check_cache:
+            self.check_cache()
 
         if self._args.find_duplicates:
             self.find_duplicates()
@@ -308,5 +353,13 @@ class UncopyHandler(object):
                 resolved_entries = self.resolve_priorities()
 
                 self.list_resolved_entries(p_resolved_entries=resolved_entries)
+
+                if len(resolved_entries) > 0:
+                    if self._args.delete:
+                        self.delete_resolved_entries(p_resolved_entries=resolved_entries)
+
+                    else:
+                        fmt = "\nResolved entries were only listed. Use option '--delete' to delete them."
+                        self._logger.info(fmt)
 
         return result
