@@ -95,7 +95,90 @@ class UncopyHandler(object):
 
         return new_picture
 
-    def scan_directories(self):
+    def evaluate_picture_list(self, p_picture_list):
+
+        session = self._p.get_session()
+        errors = 0
+
+        new_pictures = []
+        existing_pictures = []
+
+        for filename in p_picture_list:
+            existing_picture = session.query(persistence.Picture).filter_by(filename=filename).first()
+
+            if existing_picture is None:
+                try:
+                    kind = filetype.guess_mime(filename)
+
+                    if kind in RELEVANT_MIME_TYPES:
+                        new_picture = self.evaluate_new_picture(p_filename=filename)
+                        new_pictures.append(new_picture)
+
+                except Exception as e:
+                    fmt = "Exception while evaluating picture '{filename}': {exception}"
+                    self._logger.error(fmt.format(filename=filename, exception=str(e)))
+                    errors += 1
+
+            else:
+                existing_pictures.append(existing_picture)
+
+        session.commit()
+        return (existing_pictures, new_pictures, errors)
+
+
+    def index_picture_list(self, p_picture_list):
+
+        fmt = "Merging {number} images into cache..."
+        self._logger.info(fmt.format(number=len(p_picture_list)))
+
+        existing_pictures, new_pictures, errors = self.evaluate_picture_list(p_picture_list=p_picture_list)
+
+        session = self._p.get_session()
+        images_added = 0
+
+        for new_picture in new_pictures:
+            session.add(new_picture)
+            images_added = images_added + 1
+
+            if images_added % self._args.commit_block_size == 0:
+                fmt = "Images newly added: {added}..."
+                self._logger.info(fmt.format(added=images_added))
+                session.commit()
+
+        fmt = "Images newly added: {added} - with errors: {errors}."
+        self._logger.info(fmt.format(added=images_added, errors=errors))
+        session.commit()
+
+    def check_picture_list(self, p_picture_list):
+
+        fmt = "Checking {number} images against the cache..."
+        self._logger.info(fmt.format(number=len(p_picture_list)))
+
+        existing_pictures, new_pictures, errors = self.evaluate_picture_list(p_picture_list=p_picture_list)
+
+        if len(existing_pictures) > 0:
+            fmt = "Ignoring {count} images since they are also the cache!"
+            self._logger.warning(fmt.format(count=len(existing_pictures)))
+
+        all_pictures = self.get_all_pictures_in_cache()
+
+        similar_hash_bins, identical_hash_bins = self.get_hash_bins(p_picture_list=all_pictures)
+
+        resolved_entries = []
+
+        for pic in new_pictures:
+            if pic.hash in similar_hash_bins and self._args.similar:
+                entry = ResolvedEntry(keep=similar_hash_bins.get(pic.hash), discard=[pic])
+                resolved_entries.append(entry)
+
+            elif pic.md5 in identical_hash_bins and not self._args.similar:
+                entry = ResolvedEntry(keep=identical_hash_bins.get(pic.md5), discard=[pic])
+                resolved_entries.append(entry)
+
+        return resolved_entries
+
+
+    def scan_directories(self, p_directory_list):
 
         full_file_list = []
 
@@ -103,58 +186,32 @@ class UncopyHandler(object):
                                    p_exclude_patterns=self._args.exclude_patterns)
 
         fmt = "Scanning {number} directories..."
-        self._logger.info(fmt.format(number=len(self._args.scan_directories)))
+        self._logger.info(fmt.format(number=len(p_directory_list)))
 
-        for directory in self._args.scan_directories:
+        for directory in p_directory_list:
 
             effective_directory = os.path.abspath(directory)
-            file_list = f_tool.scan_directory(p_directory=effective_directory, p_recursive=self._args.scan_recursively)
+            file_list = f_tool.scan_directory(p_directory=effective_directory, p_recursive=self._args.index_recursively)
             full_file_list.extend(file_list)
 
-        session = self._p.get_session()
+        return full_file_list
 
-        fmt = "Merging {number} images into cache..."
-        self._logger.info(fmt.format(number=len(full_file_list)))
+    def index_directories(self):
 
-        images_merged = 0
-        new_images = 0
-        errors = 0
+        full_file_list = self.scan_directories(p_directory_list=self._args.index_directories)
+        self.index_picture_list(p_picture_list=full_file_list)
 
-        for filename in full_file_list:
-            result = session.query(persistence.Picture).filter_by(filename=filename).first()
-            images_merged += 1
+    def check_directories(self):
 
-            if result is None:
-                try:
-                    kind = filetype.guess_mime(filename)
+        full_file_list = self.scan_directories(p_directory_list=self._args.check_directories)
+        return self.check_picture_list(p_picture_list=full_file_list)
 
-                    if kind in RELEVANT_MIME_TYPES:
-                        new_picture = self.evaluate_new_picture(p_filename=filename)
-                        session.add(new_picture)
-                        new_images += 1
+    def get_hash_bins(self, p_picture_list):
 
-                except Exception as e:
-                    fmt = "Exception while evaluating new image '{filename}': {exception}"
-                    self._logger.error(fmt.format(filename=filename, exception=str(e)))
-                    errors += 1
-
-            if images_merged % self._args.commit_block_size == 0:
-                fmt = "Images merged/newly added/with errors: {merged}/{added}/{errors}..."
-                self._logger.info(fmt.format(merged=images_merged, added=new_images, errors=errors))
-                session.commit()
-
-
-        fmt = "Images merged/newly added/with errors: {merged}/{added}/{errors}."
-        self._logger.info(fmt.format(merged=images_merged, added=new_images, errors=errors))
-        session.commit()
-
-    def get_duplicate_hash_sets(self):
-
-        session = self._p.get_session()
         similar_hash_sets = {}
         identical_hash_sets = {}
 
-        for pic in session.query(persistence.Picture):
+        for pic in p_picture_list:
             similar_hash_bin = similar_hash_sets.get(pic.hash)
 
             if similar_hash_bin is None:
@@ -171,6 +228,11 @@ class UncopyHandler(object):
             else:
                 identical_hash_bin.append(pic)
 
+        return (similar_hash_sets, identical_hash_sets)
+
+    def get_duplicate_hash_sets(self, p_picture_list):
+
+        similar_hash_sets, identical_hash_sets = self.get_hash_bins(p_picture_list=p_picture_list)
         effective_similar_hashes = {}
 
         for (similar_hash, pics) in similar_hash_sets.items():
@@ -190,14 +252,15 @@ class UncopyHandler(object):
                 if mismatch_found:
                     effective_similar_hashes[similar_hash] = pics
 
-        session.commit()
 
         return  ( effective_similar_hashes,
                   { identical_hash:pics for (identical_hash, pics) in identical_hash_sets.items() if len(pics) > 1 }
                 )
 
     def resolve_priorities(self):
-        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets()
+
+        all_pictures = self.get_all_pictures_in_cache()
+        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets(p_picture_list=all_pictures)
 
         hash_sets = similar_hash_sets if self._args.similar else identical_hash_sets
 
@@ -234,14 +297,22 @@ class UncopyHandler(object):
                 for index in range(priority_to_be_kept+1, len(priority_values)):
                     discard.extend(priority_values[index])
 
-                resolved_entry = ResolvedEntry(keep=keep, discard=discard)
+                resolved_entry = ResolvedEntry(keep=[keep], discard=discard)
                 resolved_entries.append(resolved_entry)
 
         return resolved_entries
 
+
+    def get_all_pictures_in_cache(self):
+
+        session = self._p.get_session()
+        return session.query(persistence.Picture)
+
+
     def find_duplicates(self):
 
-        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets()
+        all_pictures = self.get_all_pictures_in_cache()
+        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets(p_picture_list=all_pictures)
 
         fmt = "\nFound {identical_number} identical image(s) and "\
               "additional {similar_number} similar image(s) in more than one location"
@@ -273,8 +344,15 @@ class UncopyHandler(object):
         self._logger.info(fmt.format(number=len(p_resolved_entries)))
 
         for entry in p_resolved_entries:
-            fmt = "    Picture {filename} will be kept with {number} duplicate(s) to be deleted in:"
-            self._logger.info(fmt.format(filename=entry.keep.filename, number=len(entry.discard)))
+            fmt = "    Picture(s) to be kept:"
+            self._logger.info(fmt)
+
+            for pic in entry.keep:
+                fmt = "        * {filename}"
+                self._logger.info(fmt.format(filename=pic.filename))
+
+            fmt = "      with duplicate(s) to be deleted in:"
+            self._logger.info(fmt)
 
             for pic in entry.discard:
                 fmt = "        * {filename}"
@@ -322,7 +400,6 @@ class UncopyHandler(object):
 
         session.commit()
 
-
     def run(self):
 
         result = 0
@@ -340,26 +417,34 @@ class UncopyHandler(object):
         self._p = persistence.Persistence(p_url=url)
         self._p.create_database()
         
-        if len(self._args.scan_directories) > 0:
-            self.scan_directories()
+        if len(self._args.index_directories) > 0:
+            self.index_directories()
 
         if self._args.check_cache:
             self.check_cache()
+
+        resolved_entries = []
+
+        if len(self._args.check_directories) > 0:
+            resolved_entries.extend(self.check_directories())
 
         if self._args.find_duplicates:
             self.find_duplicates()
 
             if self._args.use_priorities:
-                resolved_entries = self.resolve_priorities()
+                resolved_entries.extend(self.resolve_priorities())
 
-                self.list_resolved_entries(p_resolved_entries=resolved_entries)
 
-                if len(resolved_entries) > 0:
-                    if self._args.delete:
-                        self.delete_resolved_entries(p_resolved_entries=resolved_entries)
+        if len(resolved_entries) > 0:
+            self.list_resolved_entries(p_resolved_entries=resolved_entries)
 
-                    else:
-                        fmt = "\nResolved entries were only listed. Use option '--delete' to delete them."
-                        self._logger.info(fmt)
+            if self._args.delete:
+                self.delete_resolved_entries(p_resolved_entries=resolved_entries)
+
+            else:
+                fmt = "\nResolved entries were only listed. Use option '--delete' to delete them."
+                self._logger.info(fmt)
+
+
 
         return result

@@ -31,16 +31,18 @@ DEFAULT_COMMIT_BLOCK_SIZE = 1000
 
 def get_argument_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--scan-directories', nargs='*', dest='scan_directories', default=[],
-                        help='directories to be parsed')
+    parser.add_argument('--index-directories', nargs='*', dest='index_directories', default=[],
+                        help='directories to be indexed')
+    parser.add_argument('--check-directories', nargs='*', dest='check_directories', default=[],
+                        help='directories to be compared against the cache')
     parser.add_argument('--cache-directory', dest='cache_directory', default="~/.cache/uncopy_me",
                         help='directory to be used for cache files')
     parser.add_argument('--config-file', dest='config_file',
                         help='configuration file')
     parser.add_argument('--commit-block-size', dest='commit_block_size', default=DEFAULT_COMMIT_BLOCK_SIZE,
                         help='number of cache operations between commits')
-    parser.add_argument('--scan-recursively', dest='scan_recursively', default=True,
-                        help='scan recursively into directories')
+    parser.add_argument('--index-recursively', dest='index_recursively', default=True,
+                        help='index directories recursively')
     parser.add_argument('--find-duplicates', dest='find_duplicates', action="store_true",
                         help='find duplicates in cache')
     parser.add_argument('--exclude-patterns', nargs='*', dest='exclude_patterns', default = [],
@@ -89,8 +91,6 @@ def main():
 
     global logger
 
-    result = 0
-
     parser = get_argument_parser()
     arguments = parser.parse_args()
 
@@ -111,16 +111,15 @@ def main():
         logger.error(fmt.format(msg=str(e)))
         result = 2
 
-    except (NameError, IndexError, TypeError) as e:
+    except (NameError, IndexError, TypeError, KeyError, AttributeError) as e:
         fmt = "Exception: {msg}"
         logger.exception(fmt.format(msg=str(e)))
         result = 3
 
-
     except Exception as e:
         fmt = "General exception of type {type}: {msg}"
         logger.error(fmt.format(type=type(e), msg=str(e)))
-        result = 3
+        result = 4
 
     return result
 
