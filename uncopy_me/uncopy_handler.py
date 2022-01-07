@@ -88,10 +88,13 @@ class UncopyHandler(object):
 
         image = PIL.Image.open(p_filename)
         new_picture.hash = str(imagehash.dhash(image))
+        new_picture.width, new_picture.height = image.size
 
         new_picture.filename = p_filename
         with open(p_filename, "rb") as file_in:
-            new_picture.md5 = hashlib.md5(file_in.read()).hexdigest()
+            image_as_string = file_in.read()
+            new_picture.md5 = hashlib.md5(image_as_string).hexdigest()
+            new_picture.filesize = len(image_as_string)
 
         return new_picture
 
@@ -189,7 +192,6 @@ class UncopyHandler(object):
         self._logger.info(fmt.format(number=len(p_directory_list)))
 
         for directory in p_directory_list:
-
             effective_directory = os.path.abspath(directory)
             file_list = f_tool.scan_directory(p_directory=effective_directory, p_recursive=self._args.index_recursively)
             full_file_list.extend(file_list)
@@ -331,7 +333,7 @@ class UncopyHandler(object):
         if self._args.similar:
             for (hash, pics) in similar_hash_sets.items():
 
-                fmt = "    Additional pictures with similarity hash {hash} was found in {number} locations:"
+                fmt = "    Pictures with similarity hash {hash} was found in {number} locations:"
                 self._logger.info(fmt.format(hash=hash, number=len(pics)))
 
                 for pic in pics:
@@ -351,7 +353,7 @@ class UncopyHandler(object):
                 fmt = "        * {filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
 
-            fmt = "      with duplicate(s) to be deleted in:"
+            fmt = "        with duplicate(s) to be deleted in:"
             self._logger.info(fmt)
 
             for pic in entry.discard:
@@ -373,7 +375,6 @@ class UncopyHandler(object):
                 try:
                     session.query(persistence.Picture).filter(persistence.Picture.filename==pic.filename).delete()
                     os.unlink(pic.filename)
-
 
                 except IOError as e:
                     fmt = 'IOError "{msg}" while deleting "{filename}"!'

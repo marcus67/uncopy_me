@@ -29,6 +29,9 @@ class Picture(Base):
 
     id = Column(Integer, primary_key=True)
     filename = Column(String(1024))
+    filesize = Column(Integer())
+    width =  Column(Integer())
+    height = Column(Integer())
     hash = Column(String(256))
     md5 = Column(String(256))
 

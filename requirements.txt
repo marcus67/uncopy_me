@@ -1,0 +1,4 @@
+SQLAlchemy==1.4.29
+imagehash==4.2.1
+filetype==1.0.9
+PyYAML==6.0

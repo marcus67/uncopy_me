@@ -19,7 +19,7 @@ import re
 import os
 import os.path
 
-RELEVENT_FILE_EXTENSIONS = re.compile('^.+\.(jpeg|jpg|png|JPEG|JPG|PNG)$')
+RELEVANT_FILE_EXTENSIONS = re.compile('^.+\.(jpeg|jpg|png|JPEG|JPG|PNG)$')
 
 class FileTool(object):
 
@@ -47,7 +47,7 @@ class FileTool(object):
             images_in_dir = 0
 
             for filename in filenames:
-                if RELEVENT_FILE_EXTENSIONS.match(filename):
+                if RELEVANT_FILE_EXTENSIONS.match(filename):
                     try:
                         if not self.is_excluded(p_filename=filename):
                             full_path = os.path.join(dirpath, filename)
