@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2020  Marcus Rickert
+# Copyright (C) 2020-2022  Marcus Rickert
 #
 # See https://github.com/marcus67/uncopy_me
 # This program is free software; you can redistribute it and/or modify
@@ -16,16 +16,13 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
-import logging
+import sys
 
 from uncopy_me import uncopy_handler
 from uncopy_me import yaml_config
+from uncopy_me import logging_tools
 
-DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_USER_CONFIG_FILENAME = ".config/uncopy_me/uncopy_me.yaml"
-LOGGING_NAME = "uncopy_me"
-
-logger = None
 
 DEFAULT_COMMIT_BLOCK_SIZE = 1000
 
@@ -47,7 +44,7 @@ def get_argument_parser():
                         help='find duplicates in cache')
     parser.add_argument('--exclude-patterns', nargs='*', dest='exclude_patterns', default = [],
                         help='set exclude pattern for scanned picture names')
-    parser.add_argument('--loglevel', dest='log_level', default=DEFAULT_LOG_LEVEL,
+    parser.add_argument('--loglevel', dest='log_level', default=logging_tools.DEFAULT_LOG_LEVEL,
                         help='logging level', choices=['WARN', 'INFO', 'DEBUG'])
     parser.add_argument('--delete', dest='delete', action="store_true",
                         help='actually delete pictures regarded as duplicates (otherwise duplicates are only listed)')
@@ -60,41 +57,13 @@ def get_argument_parser():
                         help='use priority declarations to determine which duplicates are deleted')
     return parser
 
-def start_loggging(p_loglevel):
-
-    global logger
-
-    root_logger = logging.getLogger()
-    root_logger.handlers = []
-
-    handler = logging.StreamHandler()
-    handler.setLevel(DEFAULT_LOG_LEVEL)
-    root_logger.addHandler(handler)
-
-    logger = logging.getLogger(LOGGING_NAME)
-    logger.setLevel(DEFAULT_LOG_LEVEL)
-
-    if p_loglevel is not None:
-        logging_level = logging.getLevelName(p_loglevel)
-
-        if p_loglevel != DEFAULT_LOG_LEVEL:
-
-            fmt = "Changing logging level to {level}"
-            logger.info(fmt.format(level=p_loglevel))
-
-            handler.setLevel(logging_level)
-            root_logger.setLevel(logging_level)
-            logger.setLevel(logging_level)
-
 
 def main():
-
-    global logger
 
     parser = get_argument_parser()
     arguments = parser.parse_args()
 
-    start_loggging(p_loglevel=arguments.log_level)
+    logger = logging_tools.start_loggging(p_loglevel=arguments.log_level)
 
     try:
         config = yaml_config.YamlConfig(p_logger=logger)
@@ -125,4 +94,4 @@ def main():
 
 
 if __name__ == '__main__':
-    exit(main())
+    sys.exit(main())
