@@ -28,6 +28,7 @@ stages:
   - build
   - install_and_check
   - analyze
+  - publish
   
 build_pypi:
   image: accso/docker-python-app:latest
@@ -74,3 +75,10 @@ analyze:
   variables:
     # Suppress automatic checkout for all sub modules
     GIT_SUBMODULE_STRATEGY: recursive
+
+publish_pypi:
+  image: accso/docker-python-app:latest
+  stage: publish
+  script:
+    - ${PIP3} install python_base_app
+    - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage PUBLISH-PYPI-PACKAGE --use-dev-dir=.

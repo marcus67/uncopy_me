@@ -62,8 +62,8 @@ extended_setup_params = {
     # technical name used for e.g. directories, PIP-package, and users
     "build_debian_package" : False,
     "build_pypi_package": True,
-#    "publish_pypi_package": {'release': ('https://upload.pypi.org/legacy/', 'PYPI_API_TOKEN'),
-#                             'master': ('https://test.pypi.org/legacy/', 'TEST_PYPI_API_TOKEN')},
+    "publish_pypi_package": { 'release': ( 'PYPI_API_URL', 'PYPI_API_TOKEN', 'TEST_PYPI_API_USER' ),
+                              'master': ( 'TEST_PYPI_API_URL', 'TEST_PYPI_API_TOKEN', 'TEST_PYPI_API_USER' ) },
     "analyze": True,
 
     "run_test_suite": "run-uncopy-me-tests",
