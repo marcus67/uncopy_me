@@ -26,5 +26,4 @@ settings = {
 
 extended_settings = {
     "display_url": "github.com/marcus67/uncopy_me",
-    "babel_rel_directory": "translations"
 }
