@@ -21,6 +21,9 @@
 # but only to python_base_app/templates/gitlab-ci.template.yml!                  #
 ##################################################################################
 
+variables:
+  EXTRA_INDEX_OPTION: "--extra-index-url $TEST_PYPI_EXTRA_INDEX"
+
 stages:
   - build
   - install_and_check
@@ -30,7 +33,7 @@ build_pypi:
   image: accso/docker-python-app:latest
   stage: build
   script:
-    - pip3 install python_base_app
+    - pip3 install $EXTRA_INDEX_OPTION python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage BUILD --use-dev-dir=.
   after_script:
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEARDOWN
@@ -46,7 +49,7 @@ install_pypi:
   image: accso/docker-python-app:latest
   stage: install_and_check
   script:
-    - pip3 install python_base_app
+    - pip3 install $EXTRA_INDEX_OPTION python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage INSTALL-PYPI-PACKAGE --use-dev-dir=.
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEST --use-dev-dir .
   after_script:
@@ -64,7 +67,7 @@ analyze:
   image: accso/docker-python-app:latest
   stage: analyze
   script:
-    - pip3 install python_base_app
+    - pip3 install $EXTRA_INDEX_OPTION python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage ANALYZE --use-dev-dir=.
   after_script:
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEARDOWN

@@ -57,6 +57,7 @@ extended_setup_params = {
     # additional setup configuration used by CI stages
 
     "ci_pip_dependencies": [ "python_base_app" ],
+    "extra_pypi_indexes": { "master": ["TEST_PYPI_EXTRA_INDEX"] },
 
     # technical name used for e.g. directories, PIP-package, and users
     "build_debian_package" : False,
