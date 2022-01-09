@@ -56,6 +56,8 @@ setup_params = {
 extended_setup_params = {
     # additional setup configuration used by CI stages
 
+    "ci_pip_dependencies": [ "python_base_app" ],
+
     # technical name used for e.g. directories, PIP-package, and users
     "build_debian_package" : False,
     "build_pypi_package": True,
