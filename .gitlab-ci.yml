@@ -1,4 +1,4 @@
-#    Copyright (C) 2019-2021  Marcus Rickert
+#    Copyright (C) 2019-2022  Marcus Rickert
 #
 #    See https://github.com/marcus67/python_base_app
 #
@@ -22,7 +22,7 @@
 ##################################################################################
 
 variables:
-  EXTRA_INDEX_OPTION: "--extra-index-url $TEST_PYPI_EXTRA_INDEX"
+  PIP3: "./bin/${PIP3}.sh"
 
 stages:
   - build
@@ -33,7 +33,7 @@ build_pypi:
   image: accso/docker-python-app:latest
   stage: build
   script:
-    - pip3 install $EXTRA_INDEX_OPTION python_base_app
+    - ${PIP3} install python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage BUILD --use-dev-dir=.
   after_script:
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEARDOWN
@@ -49,7 +49,7 @@ install_pypi:
   image: accso/docker-python-app:latest
   stage: install_and_check
   script:
-    - pip3 install $EXTRA_INDEX_OPTION python_base_app
+    - ${PIP3} install python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage INSTALL-PYPI-PACKAGE --use-dev-dir=.
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEST --use-dev-dir .
   after_script:
@@ -67,7 +67,7 @@ analyze:
   image: accso/docker-python-app:latest
   stage: analyze
   script:
-    - pip3 install $EXTRA_INDEX_OPTION python_base_app
+    - ${PIP3} install python_base_app
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage ANALYZE --use-dev-dir=.
   after_script:
     - PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEARDOWN
