@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2020  Marcus Rickert
+# Copyright (C) 2020-2022  Marcus Rickert
 #
 # See https://github.com/marcus67/uncopy_me
 # This program is free software; you can redistribute it and/or modify

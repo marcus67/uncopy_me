@@ -23,3 +23,6 @@ def test_read_default_config_file(default_config: yaml_config.YamlConfig):
     priorities = default_config.get_item(p_path="priorities")
     assert priorities is not None
     assert priorities[0] == "uncopy_me/test/resources/pictures/high_priority"
+    assert priorities[1] == "uncopy_me/test/resources/pictures/medium_priority"
+    assert priorities[2] == "uncopy_me/test/resources/pictures/low_priority"
+    assert priorities[3] == "uncopy_me/test/resources/pictures/transitory"

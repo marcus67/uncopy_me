@@ -198,14 +198,14 @@ class UncopyHandler(object):
 
         return full_file_list
 
-    def index_directories(self):
+    def index_directories(self, p_directories):
 
-        full_file_list = self.scan_directories(p_directory_list=self._args.index_directories)
+        full_file_list = self.scan_directories(p_directory_list=p_directories)
         self.index_picture_list(p_picture_list=full_file_list)
 
-    def check_directories(self):
+    def check_directories(self, p_directories):
 
-        full_file_list = self.scan_directories(p_directory_list=self._args.check_directories)
+        full_file_list = self.scan_directories(p_directory_list=p_directories)
         return self.check_picture_list(p_picture_list=full_file_list)
 
     def get_hash_bins(self, p_picture_list):
@@ -401,9 +401,7 @@ class UncopyHandler(object):
 
         session.commit()
 
-    def run(self):
-
-        result = 0
+    def init(self, p_delete_cache=False):
 
         self.evaluate_config()
 
@@ -415,11 +413,23 @@ class UncopyHandler(object):
         db_filename = os.path.join(cache_directory, DB_FILENAME)
         url = 'sqlite:///{filename}'.format(filename=db_filename)
 
+        if p_delete_cache and os.path.exists(db_filename):
+            fmt = "Deleting cache at {filename}..."
+            self._logger.info(fmt.format(filename=db_filename))
+            os.unlink(db_filename)
+
         self._p = persistence.Persistence(p_url=url)
         self._p.create_database()
-        
+
+
+    def run(self):
+
+        result = 0
+
+        self.init()
+
         if len(self._args.index_directories) > 0:
-            self.index_directories()
+            self.index_directories(p_directories=self._args.index_directories)
 
         if self._args.check_cache:
             self.check_cache()
@@ -427,7 +437,7 @@ class UncopyHandler(object):
         resolved_entries = []
 
         if len(self._args.check_directories) > 0:
-            resolved_entries.extend(self.check_directories())
+            resolved_entries.extend(self.check_directories(p_directories=self._args.check_directories))
 
         if self._args.find_duplicates:
             self.find_duplicates()
