@@ -40,8 +40,10 @@ RELEVANT_MIME_TYPES = [
 ]
 
 PriorityEntry = collections.namedtuple("PriorityEntry", "priority pattern compiled_pattern")
-ResolvedEntry = collections.namedtuple("ResolvedEntry", "keep discard")
+ResolvedEntry = collections.namedtuple("ResolvedEntry", "keep discard type")
 
+TYPE_IDENTICAL = 1
+TYPE_SIMILAR = 2
 
 class UncopyHandler(object):
 
@@ -50,10 +52,14 @@ class UncopyHandler(object):
         self._logger = p_logger
         self._args = p_args
         self._config = p_config
-        self._p = None
+        self._p : persistence.Persistence = None
         self._priorities = []
         self._priority_patterns = []
         self._home_directory = os.path.expanduser(HOME_DIR)
+
+    def destroy(self):
+        if self._p is not None:
+            self._p.destroy()
 
     def replace_home_directory(self, p_filename):
 
@@ -152,7 +158,7 @@ class UncopyHandler(object):
         self._logger.info(fmt.format(added=images_added, errors=errors))
         session.commit()
 
-    def check_picture_list(self, p_picture_list):
+    def check_picture_list(self, p_picture_list, p_similar):
 
         fmt = "Checking {number} images against the cache..."
         self._logger.info(fmt.format(number=len(p_picture_list)))
@@ -170,13 +176,13 @@ class UncopyHandler(object):
         resolved_entries = []
 
         for pic in new_pictures:
-            if pic.hash in similar_hash_bins and self._args.similar:
-                entry = ResolvedEntry(keep=similar_hash_bins.get(pic.hash), discard=[pic])
+            if pic.md5 in identical_hash_bins:
+                entry = ResolvedEntry(keep=identical_hash_bins.get(pic.md5), discard=[pic], type=TYPE_IDENTICAL)
+                resolved_entries.append(entry)
+            elif pic.hash in similar_hash_bins and p_similar:
+                entry = ResolvedEntry(keep=similar_hash_bins.get(pic.hash), discard=[pic], type=TYPE_SIMILAR)
                 resolved_entries.append(entry)
 
-            elif pic.md5 in identical_hash_bins and not self._args.similar:
-                entry = ResolvedEntry(keep=identical_hash_bins.get(pic.md5), discard=[pic])
-                resolved_entries.append(entry)
 
         return resolved_entries
 
@@ -203,10 +209,10 @@ class UncopyHandler(object):
         full_file_list = self.scan_directories(p_directory_list=p_directories)
         self.index_picture_list(p_picture_list=full_file_list)
 
-    def check_directories(self, p_directories):
+    def check_directories(self, p_directories, p_similar):
 
         full_file_list = self.scan_directories(p_directory_list=p_directories)
-        return self.check_picture_list(p_picture_list=full_file_list)
+        return self.check_picture_list(p_picture_list=full_file_list, p_similar=p_similar)
 
     def get_hash_bins(self, p_picture_list):
 
@@ -214,6 +220,14 @@ class UncopyHandler(object):
         identical_hash_sets = {}
 
         for pic in p_picture_list:
+            identical_hash_bin = identical_hash_sets.get(pic.md5)
+
+            if identical_hash_bin is None:
+                identical_hash_sets[pic.md5] = [pic]
+
+            else:
+                identical_hash_bin.append(pic)
+
             similar_hash_bin = similar_hash_sets.get(pic.hash)
 
             if similar_hash_bin is None:
@@ -222,13 +236,6 @@ class UncopyHandler(object):
             else:
                 similar_hash_bin.append(pic)
 
-            identical_hash_bin = identical_hash_sets.get(pic.md5)
-
-            if identical_hash_bin is None:
-                identical_hash_sets[pic.md5] = [pic]
-
-            else:
-                identical_hash_bin.append(pic)
 
         return (similar_hash_sets, identical_hash_sets)
 
@@ -259,16 +266,12 @@ class UncopyHandler(object):
                   { identical_hash:pics for (identical_hash, pics) in identical_hash_sets.items() if len(pics) > 1 }
                 )
 
-    def resolve_priorities(self):
+    def resolve_priorities(self, p_hash_sets, p_type):
 
-        all_pictures = self.get_all_pictures_in_cache()
-        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets(p_picture_list=all_pictures)
-
-        hash_sets = similar_hash_sets if self._args.similar else identical_hash_sets
 
         resolved_entries = []
 
-        for hash, pics in hash_sets.items():
+        for hash, pics in p_hash_sets.items():
             priority_values = []
 
             for index in range(0, len(self._priority_patterns)):
@@ -299,7 +302,7 @@ class UncopyHandler(object):
                 for index in range(priority_to_be_kept+1, len(priority_values)):
                     discard.extend(priority_values[index])
 
-                resolved_entry = ResolvedEntry(keep=[keep], discard=discard)
+                resolved_entry = ResolvedEntry(keep=[keep], discard=discard, type=p_type)
                 resolved_entries.append(resolved_entry)
 
         return resolved_entries
@@ -308,7 +311,9 @@ class UncopyHandler(object):
     def get_all_pictures_in_cache(self):
 
         session = self._p.get_session()
-        return session.query(persistence.Picture)
+        pics = list(session.query(persistence.Picture))
+        session.commit()
+        return pics
 
 
     def find_duplicates(self):
@@ -353,8 +358,8 @@ class UncopyHandler(object):
                 fmt = "        * {filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
 
-            fmt = "        with duplicate(s) to be deleted in:"
-            self._logger.info(fmt)
+            fmt = "        with {type} duplicate(s) to be deleted in:"
+            self._logger.info(fmt.format(type="identical" if entry.type == TYPE_IDENTICAL else "similar"))
 
             for pic in entry.discard:
                 fmt = "        * {filename}"
@@ -437,14 +442,14 @@ class UncopyHandler(object):
         resolved_entries = []
 
         if len(self._args.check_directories) > 0:
-            resolved_entries.extend(self.check_directories(p_directories=self._args.check_directories))
+            resolved_entries.extend(self.check_directories(p_directories=self._args.check_directories,
+                                                           p_similar=self._args.similar))
 
         if self._args.find_duplicates:
             self.find_duplicates()
 
             if self._args.use_priorities:
-                resolved_entries.extend(self.resolve_priorities())
-
+                resolved_entries.extend(self.resolve_priorities_in_cache(p_similar=self._args.similar))
 
         if len(resolved_entries) > 0:
             self.list_resolved_entries(p_resolved_entries=resolved_entries)
@@ -459,3 +464,14 @@ class UncopyHandler(object):
 
 
         return result
+
+    def resolve_priorities_in_cache(self, p_similar):
+
+        all_pictures = self.get_all_pictures_in_cache()
+        similar_hash_sets, identical_hash_sets = self.get_duplicate_hash_sets(p_picture_list=all_pictures)
+
+        if p_similar:
+            return self.resolve_priorities(p_hash_sets=similar_hash_sets, p_type=TYPE_SIMILAR)
+
+        else:
+            return self.resolve_priorities(p_hash_sets=identical_hash_sets, p_type=TYPE_IDENTICAL)

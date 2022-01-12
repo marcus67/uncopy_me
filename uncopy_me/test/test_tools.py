@@ -27,7 +27,7 @@ CHECK_DIRS = [
     "uncopy_me/test/resources/pictures/to_be_checked",
 ]
 
-EXPECTED_RESOLVED_ENTRIES = {
+EXPECTED_RESOLVED_IDENTICAL_ENTRIES = {
     "pictures/high_priority/subdir_1/bm01.small.jpeg" : [
         "pictures/to_be_checked/bm01.small.jpeg"
     ],
@@ -36,5 +36,25 @@ EXPECTED_RESOLVED_ENTRIES = {
     ]
 }
 
+EXPECTED_RESOLVED_SIMILAR_ENTRIES = {
+    "pictures/high_priority/subdir_1/bm01.small.jpeg" : [
+        "pictures/to_be_checked/bm01.small.jpeg"
+    ],
+    "pictures/medium_priority/subdir_1/subsubdir_1/bm13.small.jpeg" : [
+        "pictures/to_be_checked/bm13.small.jpeg"
+    ],
+    "pictures/medium_priority/bm14.small.jpeg" : [
+        "pictures/to_be_checked/bm14.small.similar.jpeg"
+    ]
+}
+
+EXPECTED_RESOLVED_IDENTICAL_ENTRIES_WITH_PRIORITY = {
+    "pictures/high_priority/subdir_1/bm06.small.jpeg" : [
+        "pictures/low_priority/bm06.small.jpeg"
+    ],
+}
+
+
 def get_resource_path(p_rel_path: str) -> str:
     return os.path.join(os.path.dirname(__file__), "resources", p_rel_path)
+

@@ -20,6 +20,7 @@ import sqlalchemy.orm
 
 from sqlalchemy import Column, Integer, String, DateTime, Date, Time, Boolean
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.pool import StaticPool
 
 Base = sqlalchemy.ext.declarative.declarative_base()
 
@@ -40,13 +41,26 @@ class Picture(Base):
 class Persistence(object):
 
     def __init__(self, p_url):
-        self._engine = sqlalchemy.create_engine(p_url, pool_recycle=True)
+        self._engine = sqlalchemy.create_engine(p_url, pool_recycle=True, poolclass=StaticPool)
 
         self._session = None
 
+    def destroy(self):
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
+
     def create_database(self):
 
-        Base.metadata.create_all(self._engine)
+        try:
+            Base.metadata.create_all(self._engine)
+
+        except sqlalchemy.exc.OperationalError:
+            pass
 
         # See https://stackoverflow.com/questions/55921584/create-an-ordered-index-in-sqlite-db-using-sqlalchemy
         try:
@@ -68,14 +82,15 @@ class Persistence(object):
 
         return self._session
 
-    def find_picture_by_filename(self, p_filename):
-
-        session = self.get_session()
-        result = session.query(Picture).filter_by(filename == p_filename)
-
-        if not exists:
-            pinfo = create_class_instance(ProcessInfo, p_initial_values=p_process_info)
-            pinfo.key = p_process_info.get_key()
-            session.add(pinfo)
-
-        session.commit()
+#    def find_picture_by_filename(self, p_filename):
+#
+#        session = self.get_session()
+#        result = session.query(Picture).filter_by(filename == p_filename)
+#
+#        if not exists:
+#            pinfo = create_class_instance(ProcessInfo, p_initial_values=p_process_info)
+#            pinfo.key = p_process_info.get_key()
+#            session.add(pinfo)
+#
+#        session.commit()
+#

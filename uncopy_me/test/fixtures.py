@@ -17,8 +17,8 @@
 
 import pytest
 
-from uncopy_me import main
 from uncopy_me import uncopy_handler
+from uncopy_me import argument_parser
 from uncopy_me import yaml_config
 from uncopy_me import logging_tools
 from uncopy_me.test import test_tools
@@ -37,8 +37,10 @@ def default_config(logger) -> yaml_config.YamlConfig:
 @pytest.fixture
 def default_uncopy_handler(logger, default_config) -> uncopy_handler.UncopyHandler:
 
-    parser = main.get_argument_parser()
+    parser = argument_parser.get_argument_parser()
     handler = uncopy_handler.UncopyHandler(p_logger=logger, p_config=default_config, p_args=parser.parse_args())
     handler.init(p_delete_cache=True)
-    return handler
+    yield handler
+
+    handler.destroy()
 
