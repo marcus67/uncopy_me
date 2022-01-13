@@ -2,7 +2,10 @@ import argparse
 
 from uncopy_me import logging_tools
 
+DEFAULT_CACHE_DIRECTORY = "~/.cache/uncopy_me"
+
 DEFAULT_COMMIT_BLOCK_SIZE = 1000
+
 
 def get_argument_parser():
     parser = argparse.ArgumentParser()
@@ -10,7 +13,7 @@ def get_argument_parser():
                         help='directories to be indexed')
     parser.add_argument('--check-directories', nargs='*', dest='check_directories', default=[],
                         help='directories to be compared against the cache')
-    parser.add_argument('--cache-directory', dest='cache_directory', default="~/.cache/uncopy_me",
+    parser.add_argument('--cache-directory', dest='cache_directory', default=DEFAULT_CACHE_DIRECTORY,
                         help='directory to be used for cache files')
     parser.add_argument('--config-file', dest='config_file',
                         help='configuration file')
@@ -35,3 +38,18 @@ def get_argument_parser():
                         help='use priority declarations to determine which duplicates are deleted')
     return parser
 
+class default_args:
+    def __init__(self):
+        self.index_directories = []
+        self.check_directories = []
+        self.cache_directory = DEFAULT_CACHE_DIRECTORY
+        self.config_file = None
+        self.commit_block_size = DEFAULT_COMMIT_BLOCK_SIZE
+        self.index_recursively = True
+        self.find_duplicates = False
+        self.exclude_patterns = []
+        self.log_level = logging_tools.DEFAULT_LOG_LEVEL
+        self.delete = False
+        self.check_cache = False
+        self.similar = False
+        self.use_priorities = False

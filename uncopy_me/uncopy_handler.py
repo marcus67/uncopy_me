@@ -47,7 +47,7 @@ TYPE_SIMILAR = 2
 
 class UncopyHandler(object):
 
-    def __init__(self, p_logger, p_args, p_config):
+    def __init__(self, p_logger, p_config, p_args=None):
 
         self._logger = p_logger
         self._args = p_args
@@ -70,8 +70,11 @@ class UncopyHandler(object):
             return p_filename
 
 
-    def evaluate_config(self):
+    def evaluate_config(self, p_base_directory=None):
         self._priorities = self._config.get_item(p_path="priorities", p_default=[])
+
+        if p_base_directory is not None:
+            self._priorities = [ os.path.join(p_base_directory, dir) for dir in self._priorities ]
 
         try:
             self._priority_patterns = sorted([PriorityEntry(ind, priority,
@@ -406,11 +409,11 @@ class UncopyHandler(object):
 
         session.commit()
 
-    def init(self, p_delete_cache=False):
+    def init(self, p_cache_directory, p_delete_cache=False, p_base_directory=None):
 
-        self.evaluate_config()
+        self.evaluate_config(p_base_directory=p_base_directory)
 
-        cache_directory = os.path.expanduser(self._args.cache_directory)
+        cache_directory = os.path.expanduser(p_cache_directory)
 
         if not os.path.exists(cache_directory):
             os.mkdir(cache_directory)

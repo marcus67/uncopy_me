@@ -47,21 +47,27 @@ def compare_resolved_entries(p_expected_resolved_entries, p_resolved_entries):
 
 def test_find_resolved_identical_entries(default_uncopy_handler:UncopyHandler):
 
-    default_uncopy_handler.index_directories(INDEX_DIRS)
-    resolved_entries = default_uncopy_handler.check_directories(CHECK_DIRS, p_similar=False)
+    relocated_index_dirs = test_tools.relocate_path_list(INDEX_DIRS, test_tools.get_resource_path())
+    relocated_check_dirs = test_tools.relocate_path_list(CHECK_DIRS, test_tools.get_resource_path())
+    default_uncopy_handler.index_directories(relocated_index_dirs)
+    resolved_entries = default_uncopy_handler.check_directories(relocated_check_dirs, p_similar=False)
 
     compare_resolved_entries(p_expected_resolved_entries=EXPECTED_RESOLVED_IDENTICAL_ENTRIES, p_resolved_entries=resolved_entries)
 
 def test_find_resolved_similar_entries(default_uncopy_handler:UncopyHandler):
 
-    default_uncopy_handler.index_directories(INDEX_DIRS)
-    resolved_entries = default_uncopy_handler.check_directories(CHECK_DIRS, p_similar=True)
+    relocated_index_dirs = test_tools.relocate_path_list(INDEX_DIRS, test_tools.get_resource_path())
+    relocated_check_dirs = test_tools.relocate_path_list(CHECK_DIRS, test_tools.get_resource_path())
+    default_uncopy_handler.index_directories(relocated_index_dirs)
+    resolved_entries = default_uncopy_handler.check_directories(relocated_check_dirs, p_similar=True)
 
     compare_resolved_entries(p_expected_resolved_entries=EXPECTED_RESOLVED_SIMILAR_ENTRIES, p_resolved_entries=resolved_entries)
 
 def test_find_resolved_identitical_entries_with_priorities(default_uncopy_handler:UncopyHandler):
 
-    default_uncopy_handler.index_directories(INDEX_DIRS)
+    relocated_index_dirs = test_tools.relocate_path_list(INDEX_DIRS, test_tools.get_resource_path())
+    relocated_check_dirs = test_tools.relocate_path_list(CHECK_DIRS, test_tools.get_resource_path())
+    default_uncopy_handler.index_directories(relocated_index_dirs)
     resolved_entries = default_uncopy_handler.resolve_priorities_in_cache(p_similar=False)
 
     compare_resolved_entries(p_expected_resolved_entries=EXPECTED_RESOLVED_IDENTICAL_ENTRIES_WITH_PRIORITY,

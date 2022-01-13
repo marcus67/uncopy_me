@@ -15,3 +15,43 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import os
+
+from uncopy_me.test.fixtures import *
+from uncopy_me.uncopy_handler import UncopyHandler
+from uncopy_me.test.test_tools import \
+    get_resource_path, CHECK_DIRS, INDEX_DIRS, EXPECTED_RESOLVED_IDENTICAL_ENTRIES
+
+def check_files_exists(p_deleted_files, p_root_dir):
+
+    resource_root_dir = test_tools.get_resource_path("pictures")
+    for root, dirs, files in os.walk(resource_root_dir):
+        rel_path = root[len(resource_root_dir) + 1:]
+
+        for file in files:
+            path = os.path.join(p_root_dir, rel_path, file)
+
+            if path in p_deleted_files:
+                assert not os.path.exists(path)
+
+            else:
+                assert os.path.exists(path)
+
+
+
+
+def test_delete_resoved_identical_entries(default_uncopy_handler:UncopyHandler, local_picture_tree_copy):
+
+    target_dir = os.path.join(local_picture_tree_copy, "pictures")
+    check_files_exists(p_deleted_files=[], p_root_dir=target_dir)
+
+    relocated_index_dirs = test_tools.relocate_path_list(INDEX_DIRS, local_picture_tree_copy)
+    default_uncopy_handler.index_directories(relocated_index_dirs)
+
+    relocated_check_dirs = test_tools.relocate_path_list(CHECK_DIRS, local_picture_tree_copy)
+    resolved_entries = default_uncopy_handler.check_directories(relocated_check_dirs, p_similar=False)
+    default_uncopy_handler.delete_resolved_entries(p_resolved_entries=resolved_entries)
+
+    deleted_files = test_tools.relocate_path_list(test_tools.gather_deleted_files(p_dict=EXPECTED_RESOLVED_IDENTICAL_ENTRIES), local_picture_tree_copy)
+
+    check_files_exists(p_deleted_files=deleted_files, p_root_dir=target_dir)
