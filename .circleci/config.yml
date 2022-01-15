@@ -23,9 +23,6 @@
 
 version: 2.0
 
-environment:
-  PIP3: "./bin/pip3.sh"
-
 jobs:
   build_pypi:
     #working_directory: ~
@@ -38,7 +35,7 @@ jobs:
       # See https://circleci.com/docs/2.0/configuration-reference/#checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - run: ${PIP3} install python_base_app
+      - run: ./bin/pip3.sh install python_base_app
       - run: PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage BUILD --use-dev-dir=.
       - store_artifacts:
           path: "dist/uncopy-me-0.1.1.tar.gz"
@@ -59,7 +56,7 @@ jobs:
       # See https://circleci.com/docs/2.0/configuration-reference/#checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - run: ${PIP3} install python_base_app
+      - run: ./bin/pip3.sh install python_base_app
       - run: PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage INSTALL-PYPI-PACKAGE --use-dev-dir=.
       - run: PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage TEST --use-dev-dir .
       - run: codecov
@@ -78,7 +75,7 @@ jobs:
       # See https://circleci.com/docs/2.0/configuration-reference/#checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - run: ${PIP3} install python_base_app
+      - run: ./bin/pip3.sh install python_base_app
       - run: PYTHONPATH=contrib/python_base_app python3 ci_toolbox.py --execute-stage PUBLISH-PYPI-PACKAGE --use-dev-dir=.
 
 workflows:
