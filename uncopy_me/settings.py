@@ -21,7 +21,7 @@ settings = {
     "version": "0.1.1",
     "description": "Tool to remove duplicates of picture files",
     "author": "Marcus Rickert",
-    "author_email": ",marcus.rickert@web.de",
+    "author_email": "marcus.rickert@web.de",
 }
 
 extended_settings = {
