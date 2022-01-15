@@ -434,7 +434,7 @@ class UncopyHandler(object):
 
         result = 0
 
-        self.init()
+        self.init(p_cache_directory=self._args.cache_directory)
 
         if len(self._args.index_directories) > 0:
             self.index_directories(p_directories=self._args.index_directories)
