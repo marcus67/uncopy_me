@@ -41,7 +41,7 @@ build_pypi:
   artifacts:
       when: always
       paths:
-        - dist/uncopy-me-0.1.1.tar.gz
+        - dist/uncopy-me-0.1.2.tar.gz
   variables:
     # Suppress automatic checkout for all sub modules
     GIT_SUBMODULE_STRATEGY: recursive

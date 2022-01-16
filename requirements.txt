@@ -4,3 +4,5 @@ SQLAlchemy==1.4.29
 pytest==6.2.5
 PyYAML==6.0
 python_base_app==0.2.30
+validators==0.18.2
+semantic-version==2.8.5

@@ -14,18 +14,14 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-import os.path
-import shutil
 import tempfile
 
 import pytest
 
 from uncopy_me import uncopy_handler
-from uncopy_me import argument_parser
 from uncopy_me import yaml_config
 from uncopy_me import logging_tools
-from uncopy_me.test import test_tools
+from uncopy_me import test_setup
 
 @pytest.fixture
 def logger():
@@ -33,32 +29,15 @@ def logger():
 
 @pytest.fixture
 def default_config(logger) -> yaml_config.YamlConfig:
-    config = yaml_config.YamlConfig(p_logger=logger)
-    filename = test_tools.get_resource_path("configs/default.yaml")
-    config.read_config(p_filename=filename)
-    return config
+    return test_setup.default_config(logger)
 
 @pytest.fixture
 def default_uncopy_handler(logger, default_config) -> uncopy_handler.UncopyHandler:
-
-    #parser = argument_parser.get_argument_parser()
-    defaults = argument_parser.default_args()
-    with tempfile.TemporaryDirectory() as temporary_directory:
-
-        defaults.cache_directory = temporary_directory
-        handler = uncopy_handler.UncopyHandler(p_logger=logger, p_config=default_config,
-                                               p_args=defaults)
-        handler.init(p_delete_cache=True, p_cache_directory=defaults.cache_directory,
-                     p_base_directory=test_tools.get_resource_path())
-        yield handler
-
-        handler.destroy()
+    with tempfile.TemporaryDirectory() as cache_directory:
+        yield test_setup.default_uncopy_handler(logger, default_config, p_cache_directory=cache_directory)
 
 @pytest.fixture
 def local_picture_tree_copy(logger):
-
-    with tempfile.TemporaryDirectory() as t:
-
-        target_dir = os.path.join(t, "pictures")
-        shutil.copytree(test_tools.get_resource_path("pictures"), target_dir)
-        yield t
+    with tempfile.TemporaryDirectory() as target_directory:
+        test_setup.local_picture_tree_copy(logger, p_target_dir=target_directory)
+        yield target_directory

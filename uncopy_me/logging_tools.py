@@ -3,10 +3,12 @@ import logging
 DEFAULT_LOG_LEVEL = "INFO"
 LOGGING_NAME = "uncopy_me"
 
-logger = None
+root_logger : logging.Logger = None
 
 
 def start_loggging(p_loglevel:str = DEFAULT_LOG_LEVEL) -> logging.Logger:
+
+    global root_logger
 
     root_logger = logging.getLogger()
     root_logger.handlers = []
@@ -31,3 +33,9 @@ def start_loggging(p_loglevel:str = DEFAULT_LOG_LEVEL) -> logging.Logger:
             logger.setLevel(logging_level)
 
     return logger
+
+def flush():
+
+    global root_logger
+
+    root_logger.handlers[0].flush()

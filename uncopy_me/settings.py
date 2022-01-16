@@ -18,7 +18,7 @@
 settings = {
     "name": "uncopy-me",
     "url": "https://github.com/marcus67/uncopy_me",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Tool to remove duplicates of picture files",
     "author": "Marcus Rickert",
     "author_email": "marcus.rickert@web.de",

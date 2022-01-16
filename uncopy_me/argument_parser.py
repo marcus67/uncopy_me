@@ -29,6 +29,8 @@ def get_argument_parser():
                         help='logging level', choices=['WARN', 'INFO', 'DEBUG'])
     parser.add_argument('--delete', dest='delete', action="store_true",
                         help='actually delete pictures regarded as duplicates (otherwise duplicates are only listed)')
+    parser.add_argument('--force', dest='force', action="store_true",
+                        help='delete pictures without prompting on the command line')
     parser.add_argument('--check-cache', dest='check_cache', action="store_true",
                         help='removes cache entries referring to non-existing pictures')
     parser.add_argument('--similar', dest='similar', action="store_true",
@@ -36,6 +38,9 @@ def get_argument_parser():
                              '(otherwise only identical pictures are regarded as duplicates)')
     parser.add_argument('--use-priorities', dest='use_priorities', action="store_true",
                         help='use priority declarations to determine which duplicates are deleted')
+    parser.add_argument('--use-test-setup', dest='use_test_setup', action="store_true",
+                        help='creates a copy of the test data as a test setup')
+
     return parser
 
 class default_args:

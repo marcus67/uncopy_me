@@ -14,3 +14,15 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import os
+
+import uncopy_me.test_setup
+
+from uncopy_me import main
+
+def test_test_setup():
+
+    args = ["--delete", "--force", "--use-test-setup"]
+
+    main.main(p_args=args)

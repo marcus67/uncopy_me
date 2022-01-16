@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2020  Marcus Rickert
+# Copyright (C) 2020-2022  Marcus Rickert
 #
 # See https://github.com/marcus67/uncopy_me
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ import filetype
 from uncopy_me import persistence
 from uncopy_me import filetool
 from uncopy_me import yaml_config
+from uncopy_me import prompter
 
 DB_FILENAME = "uncopy-sqlite3.db"
 
@@ -368,27 +369,67 @@ class UncopyHandler(object):
                 fmt = "        * {filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
 
-    def delete_resolved_entries(self, p_resolved_entries):
+    def delete_file(self, p_pic, p_session):
+
+        try:
+            p_session.query(persistence.Picture).filter(persistence.Picture.filename == p_pic.filename).delete()
+            os.unlink(p_pic.filename)
+            fmt = "Deleted {filename}."
+            self._logger.debug(fmt.format(filename=p_pic.filename))
+
+        except IOError as e:
+            fmt = 'IOError "{msg}" while deleting "{filename}"!'
+            self._logger.error(fmt.format(msg=str(e), filename=p_pic.filename))
+
+    def delete_resolved_entries(self, p_resolved_entries, p_prompter : prompter.BasePrompter=None):
+
+        if len(p_resolved_entries) == 0:
+            fmt = "\nNo resolved entries, nothing to delete..."
+            self._logger.info(fmt)
+            return
 
         fmt = "\nDeleting {number} resolved entries..."
         self._logger.info(fmt.format(number=len(p_resolved_entries)))
 
         session = self._p.get_session()
 
-        for entry in p_resolved_entries:
-            for pic in entry.discard:
-                fmt = "    * {filename}"
-                self._logger.debug(fmt.format(filename=pic.filename))
+        if p_prompter is not None:
+            p_prompter.prompt_start(p_count=len(p_resolved_entries))
 
-                try:
-                    session.query(persistence.Picture).filter(persistence.Picture.filename==pic.filename).delete()
-                    os.unlink(pic.filename)
+        i = 0
+        skip_rest = False
 
-                except IOError as e:
-                    fmt = 'IOError "{msg}" while deleting "{filename}"!'
-                    self._logger.error(fmt.format(msg=str(e), filename=pic.filename))
+        try:
+            for entry in p_resolved_entries:
+                for pic in entry.discard:
+                    i += 1
 
-        session.commit()
+                    if p_prompter is not None:
+                        answer = p_prompter.prompt_file(p_index=i, p_filename=pic.filename)
+
+                    else:
+                        answer = prompter.ANSWER_YES
+
+                    if answer in (prompter.ANSWER_YES, prompter.ANSWER_ALL):
+                        self.delete_file(p_pic=pic, p_session=session)
+
+                    elif answer in (prompter.ANSWER_NONE, prompter.ANSWER_BREAK):
+                        skip_rest = True
+                        break
+
+                if skip_rest:
+                    break
+
+            session.commit()
+
+        except Exception as e:
+            msg = "Error during deletion: {exception}"
+            self._logger.error(msg.format(exception=str(e)))
+
+        finally:
+            if p_prompter is not None:
+                p_prompter.prompt_end()
+
 
     def check_cache(self):
 
@@ -409,16 +450,19 @@ class UncopyHandler(object):
 
         session.commit()
 
-    def init(self, p_cache_directory, p_delete_cache=False, p_base_directory=None):
+    def init(self, p_cache_directory=None, p_delete_cache=False, p_base_directory=None):
 
         self.evaluate_config(p_base_directory=p_base_directory)
 
-        cache_directory = os.path.expanduser(p_cache_directory)
+        if p_cache_directory is not None:
+            self._args.cache_directory = p_cache_directory
 
-        if not os.path.exists(cache_directory):
-            os.mkdir(cache_directory)
+        effective_cache_directory = os.path.expanduser(self._args.cache_directory)
 
-        db_filename = os.path.join(cache_directory, DB_FILENAME)
+        if not os.path.exists(effective_cache_directory):
+            os.mkdir(effective_cache_directory)
+
+        db_filename = os.path.join(effective_cache_directory, DB_FILENAME)
         url = 'sqlite:///{filename}'.format(filename=db_filename)
 
         if p_delete_cache and os.path.exists(db_filename):
@@ -458,13 +502,15 @@ class UncopyHandler(object):
             self.list_resolved_entries(p_resolved_entries=resolved_entries)
 
             if self._args.delete:
-                self.delete_resolved_entries(p_resolved_entries=resolved_entries)
+                if self._args.force:
+                    self.delete_resolved_entries(p_resolved_entries=resolved_entries)
+                else:
+                    self.delete_resolved_entries(p_resolved_entries=resolved_entries,
+                                                 p_prompter=prompter.BasePrompter(p_logger=self._logger))
 
             else:
                 fmt = "\nResolved entries were only listed. Use option '--delete' to delete them."
                 self._logger.info(fmt)
-
-
 
         return result
 

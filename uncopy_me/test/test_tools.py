@@ -16,17 +16,6 @@
 
 import os.path
 
-INDEX_DIRS = [
-  "pictures/high_priority",
-  "pictures/medium_priority",
-  "pictures/low_priority",
-  "pictures/transitory"
-]
-
-CHECK_DIRS = [
-    "pictures/to_be_checked",
-]
-
 EXPECTED_RESOLVED_IDENTICAL_ENTRIES = {
     "pictures/high_priority/subdir_1/bm01.small.jpeg" : [
         "pictures/to_be_checked/bm01.small.jpeg"
@@ -53,23 +42,3 @@ EXPECTED_RESOLVED_IDENTICAL_ENTRIES_WITH_PRIORITY = {
         "pictures/low_priority/bm06.small.jpeg"
     ],
 }
-
-def relocate_path_list(p_list, p_prefix):
-    return [ os.path.join(p_prefix, dir) for dir in p_list]
-
-def relocate_path_dict(p_dict, p_prefix):
-    return { os.path.join(p_prefix, dir):relocate_path_list(value, p_prefix) for dir, value in p_dict }
-
-def get_resource_path(p_rel_path: str=None) -> str:
-    if p_rel_path is None:
-        return os.path.join(os.path.dirname(__file__), "resources")
-
-    else:
-        return os.path.join(os.path.dirname(__file__), "resources", p_rel_path)
-
-def gather_deleted_files(p_dict):
-    deleted_files = []
-    for value in p_dict.values():
-        deleted_files.extend(value)
-
-    return deleted_files
