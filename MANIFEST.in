@@ -17,4 +17,5 @@
 
 include requirements.txt
 include README.md
-include uncopy_me/tests/resources/**/*
+recursive-include uncopy_me/test/resources *.jpeg
+recursive-include uncopy_me/test/resources *.yaml

@@ -15,13 +15,11 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import validators
 import semantic_version
+import validators
 
 from uncopy_me import git
 from uncopy_me import settings
-
-from uncopy_me.test.fixtures import *
 
 GIT_KEYS = [
     "commit_id",
@@ -37,10 +35,6 @@ SETTINGS_KEYS = {
     "description": "STRING",
     "author": "AUTHOR",
     "author_email": "EMAIL",
-}
-
-extended_settings = {
-    "display_url": "github.com/marcus67/uncopy_me",
 }
 
 
@@ -69,4 +63,3 @@ def test_settings():
 
         elif type == "AUTHOR":
             assert "Marcus Rickert" == all_keys[key]
-
