@@ -61,6 +61,9 @@ class YamlConfig(object):
     def get_item(self, p_path, p_type=None, p_default=None, p_raise_error=True, p_context="ROOT"):
         subtree = self._config
 
+        if p_path is None:
+            return subtree
+
         for element in p_path.split("."):
             if element not in subtree:
                 if p_default is None:
