@@ -41,4 +41,11 @@ EXPECTED_RESOLVED_IDENTICAL_ENTRIES_WITH_PRIORITY = {
     "pictures/high_priority/subdir_1/bm06.small.jpeg" : [
         "pictures/low_priority/bm06.small.jpeg"
     ],
+    "pictures/high_priority/subdir_2/bm11.small.jpeg": [
+        "pictures/medium_priority/subdir_1/bm11.small.jpeg"
+    ],
+    "pictures/medium_priority/subdir_1/bm08.small.jpeg": [
+        "pictures/low_priority/bm08.small.jpeg",
+        "pictures/low_priority/subdir_1/bm08.renamed.small.jpeg",
+    ],
 }

@@ -13,6 +13,7 @@ This document lists all changes of `UncopyMe` with the most recent changes at th
 * Include test resources into package
 * Change package dependency to `python_base_app>=0.2.30`
 * Allow None path in `YamlConfig.get_item()`
+* Add more identical duplicates for testing
 
 ## Version 0.1.1 (January 16th, 2022)
 
