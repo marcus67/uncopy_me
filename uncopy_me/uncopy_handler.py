@@ -30,6 +30,7 @@ from uncopy_me import persistence
 from uncopy_me import filetool
 from uncopy_me import yaml_config
 from uncopy_me import prompter
+from uncopy_me.persistence import Picture
 
 DB_FILENAME = "uncopy-sqlite3.db"
 
@@ -61,6 +62,9 @@ class UncopyHandler(object):
     def destroy(self):
         if self._p is not None:
             self._p.destroy()
+
+    def get_session(self):
+        return self._p.get_session()
 
     def replace_home_directory(self, p_filename):
 
@@ -369,17 +373,30 @@ class UncopyHandler(object):
                 fmt = "        * {filename}"
                 self._logger.info(fmt.format(filename=pic.filename))
 
-    def delete_file(self, p_pic, p_session):
+    def delete_picture(self, p_pic, p_session):
 
         try:
             p_session.query(persistence.Picture).filter(persistence.Picture.filename == p_pic.filename).delete()
             os.unlink(p_pic.filename)
             fmt = "Deleted {filename}."
-            self._logger.debug(fmt.format(filename=p_pic.filename))
+            self._logger.info(fmt.format(filename=p_pic.filename))
 
         except IOError as e:
             fmt = 'IOError "{msg}" while deleting "{filename}"!'
             self._logger.error(fmt.format(msg=str(e), filename=p_pic.filename))
+
+    def delete_pictures(self, p_pictures:[Picture]):
+
+        session = self.get_session()
+
+        for pic in p_pictures:
+            self.delete_picture(p_pic=pic, p_session=session)
+
+        session.commit()
+
+        msg = "Successfully deleted {num} pictures."
+        self._logger.info(msg.format(num=len(p_pictures)))
+
 
     def delete_resolved_entries(self, p_resolved_entries, p_prompter : prompter.BasePrompter=None):
 
@@ -411,7 +428,7 @@ class UncopyHandler(object):
                         answer = prompter.ANSWER_YES
 
                     if answer in (prompter.ANSWER_YES, prompter.ANSWER_ALL):
-                        self.delete_file(p_pic=pic, p_session=session)
+                        self.delete_picture(p_pic=pic, p_session=session)
 
                     elif answer in (prompter.ANSWER_NONE, prompter.ANSWER_BREAK):
                         skip_rest = True
