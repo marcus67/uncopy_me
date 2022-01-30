@@ -323,6 +323,12 @@ class UncopyHandler(object):
         session.commit()
         return pics
 
+    def get_number_of_pictures_in_index(self):
+
+        session = self._p.get_session()
+        count = session.query(Picture).count()
+        session.commit()
+        return count
 
     def find_duplicates(self):
 
