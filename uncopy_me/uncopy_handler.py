@@ -52,6 +52,7 @@ class UncopyHandler(object):
     def __init__(self, p_logger, p_config, p_args=None):
 
         self._logger = p_logger
+        self._base_directory = None
         self._args = p_args
         self._config = p_config
         self._p : persistence.Persistence = None
@@ -76,10 +77,14 @@ class UncopyHandler(object):
 
 
     def evaluate_config(self, p_base_directory=None):
-        self._priorities = self._config.get_item(p_path="priorities", p_default=[])
 
         if p_base_directory is not None:
-            self._priorities = [ os.path.join(p_base_directory, dir) for dir in self._priorities ]
+            self._base_directory = p_base_directory
+
+        self._priorities = self._config.get_item(p_path="priorities", p_default=[])
+
+        if self._base_directory is not None:
+            self._priorities = [ os.path.join(self._base_directory, dir) for dir in self._priorities ]
 
         try:
             self._priority_patterns = sorted([PriorityEntry(ind, priority,
